@@ -1,3 +1,5 @@
+from email.mime import message
+
 import pika
 import random
 import string
@@ -40,16 +42,11 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
     def start_consuming(self, on_message_callback):
         def _pika_callback(ch, method, properties, body):
             message = body
-            def ack():
-                try:
-                    ch.basic_ack(delivery_tag=method.delivery_tag)
-                except Exception:
-                    raise
-            def nack():
-                try:
-                    on_message_callback(message, ack, nack)
-                except Exception:
-                    raise
+
+            def ack(): ch.basic_ack(delivery_tag=method.delivery_tag)
+            def nack(): ch.basic_nack(delivery_tag=method.delivery_tag)
+            on_message_callback(message, ack, nack)
+
         try:
             self._consuming = True
             self.chan.basic_consume(
